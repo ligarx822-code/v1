@@ -39,7 +39,7 @@ try {
     
     $search = isset($_GET['search']) ? sanitize($_GET['search']) : '';
     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $per_page = 6;
+    $per_page = 9; // 3x3 grid
     $offset = ($page - 1) * $per_page;
     
     $where_conditions = ["status = 'published'"];
@@ -70,7 +70,9 @@ try {
     $posts = [];
     try {
         $sql = "
-            SELECT p.*, u.username, u.profile_image 
+            SELECT p.*, u.username, u.profile_image,
+                   (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+                   (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comments_count
             FROM posts p 
             LEFT JOIN users u ON p.author_id = u.id 
             $where_clause 
@@ -142,407 +144,6 @@ try {
     <title><?php echo defined('SITE_NAME') ? SITE_NAME : 'My Blog'; ?> - Discover Amazing Content</title>
     <meta name="description" content="Join our community and discover amazing blog posts, engage in discussions, and share your thoughts.">
     <link rel="stylesheet" href="assets/style.css">
-    <style>
-        /* Enhanced hero section with animated background */
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: var(--text-white);
-            text-align: center;
-            padding: 4rem 2rem;
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 3rem;
-        }
-        
-        .hero-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            animation: float 20s ease-in-out infinite;
-        }
-        
-        .hero-content {
-            position: relative;
-            z-index: 2;
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            background: linear-gradient(45deg, #fff, #e0e7ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: slideInDown 1s ease;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.25rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-            animation: slideInUp 1s ease 0.3s both;
-        }
-        
-        .hero-stats {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            margin-top: 2rem;
-            animation: fadeIn 1s ease 0.6s both;
-        }
-        
-        .hero-stat {
-            text-align: center;
-        }
-        
-        .hero-stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            display: block;
-        }
-        
-        .hero-stat-label {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-        
-        /* Enhanced search section with better styling */
-        .search-section {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: var(--shadow-xl);
-            border: 1px solid var(--border-light);
-            margin-bottom: 3rem;
-            position: relative;
-        }
-        
-        .search-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-            border-radius: 20px 20px 0 0;
-        }
-        
-        .search-form {
-            display: flex;
-            gap: 1rem;
-            align-items: stretch;
-            margin-bottom: 1rem;
-        }
-        
-        .search-input {
-            flex: 1;
-            padding: 1.25rem 1.5rem;
-            border: 2px solid var(--border-color);
-            border-radius: 15px;
-            font-size: 1.1rem;
-            background: var(--bg-light);
-            transition: var(--transition-normal);
-        }
-        
-        .search-input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
-            transform: translateY(-2px);
-        }
-        
-        .search-results-info {
-            color: var(--text-light);
-            font-style: italic;
-            animation: slideInLeft 0.5s ease;
-        }
-        
-        /* Enhanced post cards with better hover effects */
-        .posts-grid {
-            display: grid;
-            gap: 2rem;
-        }
-        
-        .post-card {
-            background: var(--gradient-card);
-            border-radius: 20px;
-            padding: 0;
-            overflow: hidden;
-            transition: var(--transition-normal);
-            border: 1px solid var(--border-light);
-            position: relative;
-        }
-        
-        .post-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--gradient-primary);
-            transform: scaleX(0);
-            transition: var(--transition-normal);
-        }
-        
-        .post-card:hover::before {
-            transform: scaleX(1);
-        }
-        
-        .post-card:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-xl);
-        }
-        
-        .post-card-content {
-            padding: 2rem;
-        }
-        
-        .post-image {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            transition: var(--transition-normal);
-        }
-        
-        .post-card:hover .post-image {
-            transform: scale(1.05);
-        }
-        
-        .post-title a {
-            text-decoration: none;
-            color: inherit;
-            transition: var(--transition-normal);
-        }
-        
-        .post-title a:hover {
-            color: var(--primary-color);
-        }
-        
-        .post-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-        
-        .author-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--primary-color);
-        }
-        
-        .post-keywords {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-        
-        .keyword-tag {
-            background: var(--gradient-primary);
-            color: var(--text-white);
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            transition: var(--transition-normal);
-        }
-        
-        .keyword-tag:hover {
-            transform: scale(1.05);
-        }
-        
-        /* Enhanced pagination with better styling */
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 3rem;
-            padding: 2rem;
-            background: var(--card-bg);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border-light);
-        }
-        
-        .pagination-info {
-            color: var(--text-light);
-            font-weight: 500;
-        }
-        
-        .pagination-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .pagination-buttons .btn {
-            min-width: 44px;
-            height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-        }
-        
-        /* Enhanced contact section */
-        .contact-section {
-            background: var(--bg-light);
-            padding: 4rem 0;
-            margin-top: 4rem;
-            position: relative;
-        }
-        
-        .contact-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: var(--gradient-primary);
-        }
-        
-        .contact-card {
-            max-width: 700px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 3rem;
-            box-shadow: var(--shadow-xl);
-            border: 1px solid var(--border-light);
-            position: relative;
-        }
-        
-        .contact-title {
-            text-align: center;
-            margin-bottom: 2rem;
-            font-size: 2rem;
-            font-weight: 700;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .captcha-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .captcha-image {
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: var(--transition-normal);
-        }
-        
-        .captcha-image:hover {
-            border-color: var(--primary-color);
-            transform: scale(1.02);
-        }
-        
-        /* Animations */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        /* Enhanced responsive design */
-        @media (max-width: 768px) {
-            .hero-title {
-                font-size: 2.5rem;
-            }
-            
-            .hero-stats {
-                flex-direction: column;
-                gap: 1.5rem;
-            }
-            
-            .search-form {
-                flex-direction: column;
-            }
-            
-            .pagination {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-            
-            .contact-card {
-                padding: 2rem;
-                margin: 0 1rem;
-            }
-            
-            .captcha-container {
-                flex-direction: column;
-                align-items: stretch;
-            }
-        }
-        
-        /* Enhanced error handling styles */
-        .error-message {
-            background: linear-gradient(135deg, #fee2e2, #fecaca);
-            border: 1px solid #f87171;
-            color: #dc2626;
-            padding: 1rem;
-            border-radius: 12px;
-            margin: 1rem 0;
-            text-align: center;
-        }
-        
-        .no-content {
-            text-align: center;
-            padding: 3rem 2rem;
-            background: var(--card-bg);
-            border-radius: 16px;
-            border: 1px solid var(--border-light);
-            margin: 2rem 0;
-        }
-        
-        .no-content h3 {
-            color: var(--text-color);
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-        }
-        
-        .no-content p {
-            color: var(--text-light);
-            margin-bottom: 1.5rem;
-        }
-    </style>
 </head>
 <body>
     <div class="header">
@@ -567,7 +168,7 @@ try {
     </div>
 
     <div class="container">
-         Enhanced Hero Section 
+        <!-- Enhanced Hero Section -->
         <div class="hero-section">
             <div class="hero-content">
                 <h1 class="hero-title">Welcome to <?php echo defined('SITE_NAME') ? SITE_NAME : 'My Blog'; ?></h1>
@@ -590,7 +191,7 @@ try {
             </div>
         </div>
 
-         Enhanced Search Section 
+        <!-- Enhanced Search Section -->
         <div class="search-section">
             <form method="GET" class="search-form">
                 <input type="text" name="search" class="search-input" 
@@ -609,10 +210,10 @@ try {
         </div>
 
         <div class="main-content">
-             Enhanced Posts Section 
+            <!-- Enhanced Posts Section -->
             <div class="posts-grid">
                 <?php if (empty($posts)): ?>
-                    <div class="no-content">
+                    <div class="no-content" style="grid-column: 1 / -1;">
                         <h3>📝 No posts found</h3>
                         <p>There are no published posts yet. Check back later for amazing content!</p>
                         <?php if (isLoggedIn() && isAdmin()): ?>
@@ -622,12 +223,20 @@ try {
                 <?php else: ?>
                     <?php foreach ($posts as $post): ?>
                         <article class="post-card">
-                            <?php if (!empty($post['featured_image']) && file_exists(UPLOAD_PATH . 'posts/' . $post['featured_image'])): ?>
-                                <img src="<?php echo UPLOAD_PATH; ?>posts/<?php echo htmlspecialchars($post['featured_image']); ?>" 
-                                     alt="<?php echo htmlspecialchars($post['title']); ?>" class="post-image">
-                            <?php endif; ?>
+                            <?php 
+                            $image_path = '';
+                            if (!empty($post['featured_image']) && file_exists(UPLOAD_PATH . 'posts/' . $post['featured_image'])) {
+                                $image_path = UPLOAD_PATH . 'posts/' . $post['featured_image'];
+                            } else {
+                                $image_path = 'uploads/posts/default.png';
+                            }
+                            ?>
+                            <img src="<?php echo $image_path; ?>" 
+                                 alt="<?php echo htmlspecialchars($post['title']); ?>" 
+                                 class="post-image"
+                                 onclick="window.location.href='post.php?slug=<?php echo urlencode($post['slug']); ?>'">
                             
-                            <div class="post-card-content">
+                            <div class="post-content">
                                 <h2 class="post-title">
                                     <a href="post.php?slug=<?php echo urlencode($post['slug']); ?>">
                                         <?php echo htmlspecialchars($post['title']); ?>
@@ -652,13 +261,13 @@ try {
                                     <?php 
                                     $content = $post['content'] ?? '';
                                     $excerpt = strip_tags($content);
-                                    echo htmlspecialchars(substr($excerpt, 0, 180)) . (strlen($excerpt) > 180 ? '...' : '');
+                                    echo htmlspecialchars(substr($excerpt, 0, 120)) . (strlen($excerpt) > 120 ? '...' : '');
                                     ?>
                                 </div>
                                 
                                 <?php if (!empty($post['keywords'])): ?>
                                     <div class="post-keywords">
-                                        <?php foreach (explode(',', $post['keywords']) as $keyword): ?>
+                                        <?php foreach (array_slice(explode(',', $post['keywords']), 0, 3) as $keyword): ?>
                                             <?php $keyword = trim($keyword); ?>
                                             <?php if (!empty($keyword)): ?>
                                                 <span class="keyword-tag">
@@ -668,20 +277,27 @@ try {
                                         <?php endforeach; ?>
                                     </div>
                                 <?php endif; ?>
+                            </div>
+                            
+                            <div class="post-actions">
+                                <button class="like-btn" onclick="toggleLike(<?php echo $post['id']; ?>, this)" 
+                                        data-post-id="<?php echo $post['id']; ?>">
+                                    <span class="like-icon">❤️</span>
+                                    <span class="like-count"><?php echo number_format($post['likes_count'] ?? 0); ?></span>
+                                </button>
                                 
-                                <div style="margin-top: 1.5rem;">
-                                    <a href="post.php?slug=<?php echo urlencode($post['slug']); ?>" class="btn btn-primary">
-                                        Read More →
-                                    </a>
-                                </div>
+                                <button class="comment-btn" onclick="openCommentModal(<?php echo $post['id']; ?>)">
+                                    <span>💬</span>
+                                    <span><?php echo number_format($post['comments_count'] ?? 0); ?></span>
+                                </button>
                             </div>
                         </article>
                     <?php endforeach; ?>
                 <?php endif; ?>
 
-                 Enhanced Pagination 
+                <!-- Enhanced Pagination -->
                 <?php if ($total_pages > 1): ?>
-                <div class="pagination">
+                <div class="pagination" style="grid-column: 1 / -1;">
                     <div class="pagination-info">
                         Page <?php echo $page; ?> of <?php echo $total_pages; ?> 
                         (<?php echo number_format($total_posts); ?> posts)
@@ -706,101 +322,64 @@ try {
                 <?php endif; ?>
             </div>
 
-             Sidebar 
+            <!-- Sidebar -->
             <div class="sidebar">
-                 Popular Posts 
+                <!-- Popular Posts -->
                 <div class="widget">
-                    <h3 class="widget-title">Popular Posts</h3>
+                    <h3 class="widget-title">🔥 Trending Posts</h3>
                     <?php if (empty($popular_posts)): ?>
                         <p>No posts yet.</p>
                     <?php else: ?>
                         <?php foreach ($popular_posts as $popular): ?>
                             <div class="mb-2">
-                                <a href="post.php?id=<?php echo (int)$popular['id']; ?>" style="text-decoration: none; color: var(--text-color);">
+                                <a href="post.php?id=<?php echo (int)$popular['id']; ?>" style="text-decoration: none; color: var(--text-primary);">
                                     <strong><?php echo htmlspecialchars(substr($popular['title'], 0, 50)); ?>...</strong>
                                 </a>
                                 <div style="font-size: 0.875rem; color: var(--text-light);">
-                                    <?php echo number_format($popular['views'] ?? 0); ?> views
+                                    👁️ <?php echo number_format($popular['views'] ?? 0); ?> views
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
 
-                 Recent Posts 
+                <!-- Recent Posts -->
                 <div class="widget">
-                    <h3 class="widget-title">Recent Posts</h3>
+                    <h3 class="widget-title">📅 Recent Posts</h3>
                     <?php if (empty($recent_posts)): ?>
                         <p>No posts yet.</p>
                     <?php else: ?>
                         <?php foreach ($recent_posts as $recent): ?>
                             <div class="mb-2">
-                                <a href="post.php?id=<?php echo (int)$recent['id']; ?>" style="text-decoration: none; color: var(--text-color);">
+                                <a href="post.php?id=<?php echo (int)$recent['id']; ?>" style="text-decoration: none; color: var(--text-primary);">
                                     <strong><?php echo htmlspecialchars(substr($recent['title'], 0, 50)); ?>...</strong>
                                 </a>
                                 <div style="font-size: 0.875rem; color: var(--text-light);">
-                                    <?php echo date('M j, Y', strtotime($recent['created_at'])); ?>
+                                    📅 <?php echo date('M j, Y', strtotime($recent['created_at'])); ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
 
-                 About 
+                <!-- About -->
                 <div class="widget">
-                    <h3 class="widget-title">About</h3>
+                    <h3 class="widget-title">ℹ️ About</h3>
                     <p>Welcome to our blog! Here you'll find amazing content about various topics. Join our community and share your thoughts!</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Enhanced Contact Section -->
-    <div class="contact-section">
-        <div class="container">
-            <div class="contact-card">
-                <h3 class="contact-title">💬 Get In Touch</h3>
-                <form id="contactForm" method="POST" action="contact.php">
-                    <div class="form-group">
-                        <label class="form-label">👤 Full Name *</label>
-                        <input type="text" name="name" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">📧 Email Address *</label>
-                        <input type="email" name="email" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">📱 Phone Number</label>
-                        <input type="tel" name="phone" class="form-input">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">💭 Your Message *</label>
-                        <textarea name="message" class="form-input form-textarea" 
-                                  placeholder="Tell us what's on your mind..." required></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">🔒 Security Verification *</label>
-                        <div class="captcha-container">
-                            <img id="captchaImage" src="captcha.php" alt="Captcha" class="captcha-image" 
-                                 onclick="this.src='captcha.php?'+Math.random()">
-                            <div style="flex: 1;">
-                                <input type="text" name="captcha" class="form-input" 
-                                       placeholder="Enter the code shown above" required>
-                                <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
-                                    Click image to refresh
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem;">
-                        🚀 Send Message
-                    </button>
-                </form>
+    <!-- Comment Modal -->
+    <div class="comment-modal" id="commentModal">
+        <div class="comment-modal-content">
+            <div class="comment-modal-header">
+                <h3>💬 Comments</h3>
+                <button class="comment-modal-close" onclick="closeCommentModal()">×</button>
+            </div>
+            <div id="commentModalBody">
+                <!-- Comments will be loaded here -->
             </div>
         </div>
     </div>
@@ -820,6 +399,79 @@ try {
             }
         });
         
+        // Like functionality
+        async function toggleLike(postId, button) {
+            <?php if (!isLoggedIn()): ?>
+                alert('Please login to like posts');
+                window.location.href = 'auth/login.php';
+                return;
+            <?php endif; ?>
+            
+            try {
+                const formData = new FormData();
+                formData.append('post_id', postId);
+                formData.append('csrf_token', '<?php echo csrf_token(); ?>');
+                
+                const response = await fetch('api/like_post.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const likeCount = button.querySelector('.like-count');
+                    const likeIcon = button.querySelector('.like-icon');
+                    
+                    if (result.action === 'liked') {
+                        button.classList.add('liked');
+                        likeIcon.textContent = '❤️';
+                    } else {
+                        button.classList.remove('liked');
+                        likeIcon.textContent = '🤍';
+                    }
+                    
+                    likeCount.textContent = result.likes_count;
+                } else {
+                    alert(result.message || 'Error occurred');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error occurred');
+            }
+        }
+        
+        // Comment modal functionality
+        function openCommentModal(postId) {
+            const modal = document.getElementById('commentModal');
+            const modalBody = document.getElementById('commentModalBody');
+            
+            modalBody.innerHTML = '<div style="text-align: center; padding: 2rem;">Loading comments...</div>';
+            modal.classList.add('active');
+            
+            // Load comments via AJAX
+            fetch(`post.php?id=${postId}&ajax=comments`)
+                .then(response => response.text())
+                .then(html => {
+                    modalBody.innerHTML = html;
+                })
+                .catch(error => {
+                    modalBody.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error);">Error loading comments</div>';
+                });
+        }
+        
+        function closeCommentModal() {
+            const modal = document.getElementById('commentModal');
+            modal.classList.remove('active');
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('commentModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCommentModal();
+            }
+        });
+        
         document.addEventListener('DOMContentLoaded', function() {
             try {
                 // Smooth scroll for anchor links
@@ -833,25 +485,21 @@ try {
                     });
                 });
                 
-                // Auto-refresh captcha every 2 minutes
-                setInterval(function() {
-                    const captcha = document.getElementById('captchaImage');
-                    if (captcha) {
-                        captcha.src = 'captcha.php?' + Math.random();
-                    }
-                }, 120000);
-                
-                // Form validation feedback
-                const form = document.getElementById('contactForm');
-                if (form) {
-                    form.addEventListener('submit', function(e) {
-                        const btn = form.querySelector('button[type="submit"]');
-                        if (btn) {
-                            btn.innerHTML = '<span class="loading"></span> Sending...';
-                            btn.disabled = true;
+                // Lazy loading for images
+                const images = document.querySelectorAll('img[data-src]');
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy');
+                            imageObserver.unobserve(img);
                         }
                     });
-                }
+                });
+                
+                images.forEach(img => imageObserver.observe(img));
+                
             } catch (error) {
                 console.log('JavaScript error:', error);
             }

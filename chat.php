@@ -53,7 +53,7 @@ try {
     // Handle AJAX requests for loading messages
     if (isset($_GET['load_messages'])) {
         $offset = (int)($_GET['offset'] ?? 0);
-        $limit = 100;
+        $limit = 50;
         
         $stmt = $db->prepare("
             SELECT cm.*, u.username, u.profile_image, 
@@ -72,7 +72,7 @@ try {
         exit;
     }
     
-    // Get initial messages (latest 100)
+    // Get initial messages (latest 50)
     $stmt = $db->prepare("
         SELECT cm.*, u.username, u.profile_image, 
                DATE_FORMAT(cm.created_at, '%H:%i') as time,
@@ -80,7 +80,7 @@ try {
         FROM chat_messages cm 
         JOIN users u ON cm.user_id = u.id 
         ORDER BY cm.created_at DESC 
-        LIMIT 100
+        LIMIT 50
     ");
     $stmt->execute();
     $messages = array_reverse($stmt->fetchAll());
@@ -89,21 +89,9 @@ try {
     $stmt = $db->query("SELECT COUNT(*) as total FROM chat_messages");
     $total_messages = $stmt->fetch()['total'];
     
-    // Get online users (active in last 5 minutes)
-    $stmt = $db->prepare("
-        SELECT DISTINCT u.username, u.profile_image 
-        FROM users u 
-        JOIN chat_messages cm ON u.id = cm.user_id 
-        WHERE cm.created_at >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-        ORDER BY u.username
-    ");
-    $stmt->execute();
-    $online_users = $stmt->fetchAll();
-    
 } catch (Exception $e) {
     error_log("Chat error: " . $e->getMessage());
     $messages = [];
-    $online_users = [];
     $total_messages = 0;
     $error_message = "Chat system is temporarily unavailable. Please try again later.";
 }
@@ -203,24 +191,6 @@ try {
                     </div>
                 <?php endif; ?>
             </div>
-        </div>
-        
-        <div class="online-users">
-            <h3>
-                <span class="online-indicator"></span>
-                Online Users
-            </h3>
-            <?php if (empty($online_users)): ?>
-                <p style="color: #64748b; text-align: center; padding: 20px;">No active users</p>
-            <?php else: ?>
-                <?php foreach ($online_users as $user): ?>
-                    <div class="user-item">
-                        <img src="<?php echo htmlspecialchars($user['profile_image'] ?: 'assets/default-avatar.jpg'); ?>" 
-                             alt="Avatar" class="user-avatar">
-                        <span class="user-name"><?php echo htmlspecialchars($user['username']); ?></span>
-                    </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
         </div>
     </div>
     
