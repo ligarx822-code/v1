@@ -13,7 +13,7 @@ class EmailVerification {
     
     // Generate verification code
     private function generateCode($length = 6) {
-        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+        $chars = '123456789';
         $code = '';
         $max = strlen($chars) - 1;
         for ($i = 0; $i < $length; $i++) {
