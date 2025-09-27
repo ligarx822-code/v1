@@ -72,7 +72,7 @@ $allSqlStatements = [
         INDEX idx_user_id (user_id)
     )",
     
-    // Post views table
+    // Post views table (for tracking unique daily views)
     "CREATE TABLE IF NOT EXISTS post_views (
         id INT AUTO_INCREMENT PRIMARY KEY,
         post_id INT NOT NULL,
@@ -81,8 +81,8 @@ $allSqlStatements = [
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-        INDEX idx_post_user (post_id, user_id),
-        INDEX idx_post_ip (post_id, ip_address),
+        INDEX idx_post_user_date (post_id, user_id, created_at),
+        INDEX idx_post_ip_date (post_id, ip_address, created_at),
         INDEX idx_created_at (created_at)
     )",
     
@@ -222,8 +222,8 @@ $insertStatements = [
         email_verified = 1,
         verification_code = NULL",
     
-    // Sample posts
-    "INSERT INTO posts (title, slug, content, keywords, author_id, status) VALUES 
+    // Sample posts with proper HTML content
+    "INSERT INTO posts (title, slug, content, keywords, author_id, status, featured_image) VALUES 
     ('🚀 Complete Web Development Guide 2025', 'complete-web-development-guide-2025', 
     '<div style=\"text-align: center; margin-bottom: 2rem;\">
         <img src=\"https://images.pexels.com/photos/11035380/pexels-photo-11035380.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1\" alt=\"Web Development\" style=\"width: 100%; max-width: 800px; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.1);\">
@@ -232,7 +232,7 @@ $insertStatements = [
     <h2 style=\"color: #667eea; margin-bottom: 1.5rem;\">🎯 Introduction</h2>
     <p style=\"font-size: 1.1rem; line-height: 1.8; color: #334155;\">Welcome to the most comprehensive web development guide for 2025! This tutorial will take you from beginner to advanced level, covering all the essential technologies and best practices.</p>
 
-    <h3 style=\"color: #764ba2; margin: 2rem 0 1rem;\">📚 What You will Learn</h3>
+    <h3 style=\"color: #764ba2; margin: 2rem 0 1rem;\">📚 What You Will Learn</h3>
     <ul style=\"font-size: 1.05rem; line-height: 1.7; color: #475569;\">
         <li>Modern HTML5 and CSS3 techniques</li>
         <li>JavaScript ES6+ features and frameworks</li>
@@ -274,7 +274,7 @@ fetchUserData(123).then(result => {
                 style=\"position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;\" 
                 allowfullscreen></iframe>
     </div>', 
-    'web development, programming, javascript, html, css, tutorial, 2025, guide, coding, frontend, backend', 1, 'published')
+    'web development, programming, javascript, html, css, tutorial, 2025, guide, coding, frontend, backend', 1, 'published', 'default.png')
     ON DUPLICATE KEY UPDATE title=title",
     
     // Sample chat messages
@@ -359,6 +359,20 @@ try {
                 echo "⚠️  Insert error: " . $e->getMessage() . "\n";
             }
         }
+    }
+    
+    // Create default image if it doesn't exist
+    $defaultImagePath = '../uploads/posts/default.png';
+    if (!file_exists($defaultImagePath)) {
+        $uploadsDir = '../uploads/posts';
+        if (!is_dir($uploadsDir)) {
+            mkdir($uploadsDir, 0755, true);
+        }
+        
+        // Create a simple default image (1x1 transparent PNG)
+        $defaultImageData = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+        file_put_contents($defaultImagePath, $defaultImageData);
+        echo "✅ Created default image: uploads/posts/default.png\n";
     }
     
     echo "=====================================\n";

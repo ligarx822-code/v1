@@ -25,7 +25,12 @@ try {
         $stmt = $db->prepare("SELECT profile_image FROM users WHERE id = ?");
         $stmt->execute([$user_id]);
         $user = $stmt->fetch();
-        $user_avatar = $user['profile_image'] ?: 'assets/default-avatar.jpg';
+        if ($user && !empty($user['profile_image'])) {
+            $avatar_path = UPLOAD_PATH . 'profiles/' . $user['profile_image'];
+            if (file_exists($avatar_path)) {
+                $user_avatar = $avatar_path;
+            }
+        }
     }
     
     // Handle message sending (only for logged users)
@@ -147,7 +152,7 @@ try {
             <?php endif; ?>
             
             <div class="chat-messages" id="chatMessages">
-                <div id="loadMoreBtn" class="loading-messages" style="display: none;">
+                <div id="loadMoreBtn" class="loading-messages" style="display: none; text-align: center; padding: 1rem;">
                     <button onclick="loadMoreMessages()" class="btn btn-secondary">Load More Messages</button>
                 </div>
                 
@@ -161,7 +166,16 @@ try {
                     <div id="messagesContainer">
                         <?php foreach ($messages as $msg): ?>
                             <div class="message <?php echo ($is_logged_in && $msg['user_id'] == $user_id) ? 'own' : ''; ?>">
-                                <img src="<?php echo htmlspecialchars($msg['profile_image'] ?: 'assets/default-avatar.jpg'); ?>" 
+                                <?php 
+                                $msg_avatar = 'assets/default-avatar.jpg';
+                                if (!empty($msg['profile_image'])) {
+                                    $msg_avatar_path = UPLOAD_PATH . 'profiles/' . $msg['profile_image'];
+                                    if (file_exists($msg_avatar_path)) {
+                                        $msg_avatar = $msg_avatar_path;
+                                    }
+                                }
+                                ?>
+                                <img src="<?php echo $msg_avatar; ?>" 
                                      alt="Avatar" class="message-avatar">
                                 <div class="message-content">
                                     <div class="message-header">
@@ -244,8 +258,13 @@ try {
                         messages.forEach(msg => {
                             const messageDiv = document.createElement('div');
                             messageDiv.className = `message ${msg.user_id == <?php echo $user_id ?? 0; ?> ? 'own' : ''}`;
+                            
+                            const avatar = msg.profile_image ? 
+                                `<?php echo UPLOAD_PATH; ?>profiles/${msg.profile_image}` : 
+                                'assets/default-avatar.jpg';
+                            
                             messageDiv.innerHTML = `
-                                <img src="${msg.profile_image || 'assets/default-avatar.jpg'}" alt="Avatar" class="message-avatar">
+                                <img src="${avatar}" alt="Avatar" class="message-avatar">
                                 <div class="message-content">
                                     <div class="message-header">
                                         <span class="message-username">${msg.username}</span>

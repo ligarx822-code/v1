@@ -39,9 +39,31 @@ if (!$post) {
     exit;
 }
 
-// Track post view
-$stats = new StatsTracker();
-$stats->trackPostView($post['id']);
+// Track post view (only once per user per day)
+if (isLoggedIn()) {
+    $user_id = $_SESSION['user_id'];
+    $today = date('Y-m-d');
+    
+    // Check if user already viewed this post today
+    $stmt = $db->prepare("
+        SELECT id FROM post_views 
+        WHERE post_id = ? AND user_id = ? AND DATE(created_at) = ?
+    ");
+    $stmt->execute([$post['id'], $user_id, $today]);
+    
+    if (!$stmt->fetch()) {
+        // Add view record
+        $stmt = $db->prepare("
+            INSERT INTO post_views (post_id, user_id, ip_address) 
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([$post['id'], $user_id, getClientIP()]);
+        
+        // Update post views count
+        $stmt = $db->prepare("UPDATE posts SET views = views + 1 WHERE id = ?");
+        $stmt->execute([$post['id']]);
+    }
+}
 
 // Get comments
 $stmt = $db->prepare("
@@ -473,14 +495,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
     </style>
 </head>
 <body>
-    <?php include 'includes/header.php'; ?>
+    <div class="header">
+        <nav class="nav">
+            <a href="index.php" class="logo"><?php echo SITE_NAME; ?></a>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.php">🏠 Home</a></li>
+                <?php if (isLoggedIn()): ?>
+                    <li><a href="chat.php">💬 Chat</a></li>
+                    <li><a href="auth/profile.php">👤 Profile</a></li>
+                    <?php if (isAdmin()): ?>
+                        <li><a href="admin/dashboard.php">⚙️ Admin</a></li>
+                    <?php endif; ?>
+                    <li><a href="auth/logout.php">🚪 Logout</a></li>
+                <?php else: ?>
+                    <li><a href="auth/login.php">🔑 Login</a></li>
+                    <li><a href="auth/register.php">📝 Register</a></li>
+                <?php endif; ?>
+            </ul>
+        </nav>
+    </div>
     
     <div class="post-container">
         <div class="main-content">
             <!-- Post Content -->
             <article class="post-article">
                 <?php if ($post['featured_image']): ?>
-                    <img src="<?php echo UPLOAD_PATH; ?>posts/<?php echo $post['featured_image']; ?>" 
+                    <?php 
+                    $image_path = 'uploads/posts/default.png';
+                    if (!empty($post['featured_image'])) {
+                        $full_path = UPLOAD_PATH . 'posts/' . $post['featured_image'];
+                        if (file_exists($full_path)) {
+                            $image_path = $full_path;
+                        }
+                    }
+                    ?>
+                    <img src="<?php echo $image_path; ?>" 
                          alt="<?php echo htmlspecialchars($post['title']); ?>" class="post-image">
                 <?php endif; ?>
                 
@@ -490,9 +540,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
                     </h1>
                     
                     <div class="post-meta">
-                        <img src="<?php echo UPLOAD_PATH; ?>profiles/<?php echo $post['profile_image']; ?>" 
-                             alt="Author" class="author-avatar"
-                             onerror="this.src='assets/default-avatar.jpg'">
+                        <?php 
+                        $profile_image = 'assets/default-avatar.jpg';
+                        if (!empty($post['profile_image'])) {
+                            $profile_path = UPLOAD_PATH . 'profiles/' . $post['profile_image'];
+                            if (file_exists($profile_path)) {
+                                $profile_image = $profile_path;
+                            }
+                        }
+                        ?>
+                        <img src="<?php echo $profile_image; ?>" 
+                             alt="Author" class="author-avatar">
                         <div class="author-info">
                             <h4>
                                 <a href="user-profile.php?id=<?php echo $post['author_id']; ?>" 
@@ -517,7 +575,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
                         </div>
                     <?php endif; ?>
                     
-                    <div class="post-content">
+                    <div class="post-content post-content-display">
                         <?php echo $post['content']; // Content is stored as HTML ?>
                     </div>
                     
@@ -534,7 +592,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
             <!-- Comments Section -->
             <div class="comments-section">
                 <div class="comments-header">
-                    <h3>Comments (<?php echo count($comments); ?>)</h3>
+                    <h3>💬 Comments (<?php echo count($comments); ?>)</h3>
                 </div>
                 
                 <?php if ($comment_message): ?>
@@ -566,9 +624,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
                     <?php foreach ($comments as $comment): ?>
                         <div class="comment">
                             <a href="user-profile.php?id=<?php echo $comment['user_id']; ?>">
-                                <img src="<?php echo UPLOAD_PATH; ?>profiles/<?php echo $comment['profile_image']; ?>" 
-                                     alt="<?php echo htmlspecialchars($comment['username']); ?>" class="comment-avatar"
-                                     onerror="this.src='assets/default-avatar.jpg'">
+                                <?php 
+                                $comment_avatar = 'assets/default-avatar.jpg';
+                                if (!empty($comment['profile_image'])) {
+                                    $avatar_path = UPLOAD_PATH . 'profiles/' . $comment['profile_image'];
+                                    if (file_exists($avatar_path)) {
+                                        $comment_avatar = $avatar_path;
+                                    }
+                                }
+                                ?>
+                                <img src="<?php echo $comment_avatar; ?>" 
+                                     alt="<?php echo htmlspecialchars($comment['username']); ?>" class="comment-avatar">
                             </a>
                             <div class="comment-content">
                                 <div class="comment-author">
@@ -594,10 +660,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
             <!-- Author Info -->
             <div class="widget author-widget">
                 <h3 class="widget-title">About the Author</h3>
-                <img src="<?php echo UPLOAD_PATH; ?>profiles/<?php echo $post['profile_image']; ?>" 
+                <img src="<?php echo $profile_image; ?>" 
                      alt="<?php echo htmlspecialchars($post['username']); ?>" 
-                     class="author-widget-avatar"
-                     onerror="this.src='assets/default-avatar.jpg'">
+                     class="author-widget-avatar">
                 <h4 style="margin-bottom: 16px; color: #334155;">
                     <?php echo htmlspecialchars($post['username'] ?? 'Unknown'); ?>
                 </h4>
@@ -652,5 +717,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isLoggedIn()) {
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleMobileMenu() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+        }
+        
+        // Close mobile nav when clicking outside
+        document.addEventListener('click', function(e) {
+            const nav = document.querySelector('.nav');
+            const navLinks = document.getElementById('navLinks');
+            if (!nav.contains(e.target)) {
+                navLinks.classList.remove('active');
+            }
+        });
+    </script>
 </body>
 </html>

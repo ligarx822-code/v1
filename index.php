@@ -39,7 +39,7 @@ try {
     
     $search = isset($_GET['search']) ? sanitize($_GET['search']) : '';
     $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $per_page = 9; // 3x3 grid
+    $per_page = 6; // 2x3 grid for better layout
     $offset = ($page - 1) * $per_page;
     
     $where_conditions = ["status = 'published'"];
@@ -93,14 +93,14 @@ try {
     $total_views = 0;
     
     try {
-        $stmt = $db->query("SELECT id, title, views FROM posts WHERE status = 'published' ORDER BY views DESC LIMIT 5");
+        $stmt = $db->query("SELECT id, title, views, slug FROM posts WHERE status = 'published' ORDER BY views DESC LIMIT 5");
         $popular_posts = $stmt ? $stmt->fetchAll() : [];
     } catch (Exception $e) {
         error_log("Popular posts query error: " . $e->getMessage());
     }
     
     try {
-        $stmt = $db->query("SELECT id, title, created_at FROM posts WHERE status = 'published' ORDER BY created_at DESC LIMIT 5");
+        $stmt = $db->query("SELECT id, title, created_at, slug FROM posts WHERE status = 'published' ORDER BY created_at DESC LIMIT 5");
         $recent_posts = $stmt ? $stmt->fetchAll() : [];
     } catch (Exception $e) {
         error_log("Recent posts query error: " . $e->getMessage());
@@ -222,32 +222,34 @@ try {
                     </div>
                 <?php else: ?>
                     <?php foreach ($posts as $post): ?>
-                        <article class="post-card">
+                        <article class="post-card" onclick="window.location.href='post.php?slug=<?php echo urlencode($post['slug']); ?>'">
                             <?php 
-                            $image_path = '';
-                            if (!empty($post['featured_image']) && file_exists(UPLOAD_PATH . 'posts/' . $post['featured_image'])) {
-                                $image_path = UPLOAD_PATH . 'posts/' . $post['featured_image'];
-                            } else {
-                                $image_path = 'uploads/posts/default.png';
+                            $image_path = 'uploads/posts/default.png';
+                            if (!empty($post['featured_image'])) {
+                                $full_path = UPLOAD_PATH . 'posts/' . $post['featured_image'];
+                                if (file_exists($full_path)) {
+                                    $image_path = $full_path;
+                                }
                             }
                             ?>
                             <img src="<?php echo $image_path; ?>" 
                                  alt="<?php echo htmlspecialchars($post['title']); ?>" 
-                                 class="post-image"
-                                 onclick="window.location.href='post.php?slug=<?php echo urlencode($post['slug']); ?>'">
+                                 class="post-image">
                             
                             <div class="post-content">
                                 <h2 class="post-title">
-                                    <a href="post.php?slug=<?php echo urlencode($post['slug']); ?>">
-                                        <?php echo htmlspecialchars($post['title']); ?>
-                                    </a>
+                                    <?php echo htmlspecialchars($post['title']); ?>
                                 </h2>
                                 
                                 <div class="post-meta">
                                     <?php 
-                                    $profile_image = !empty($post['profile_image']) && file_exists(UPLOAD_PATH . 'profiles/' . $post['profile_image']) 
-                                        ? UPLOAD_PATH . 'profiles/' . $post['profile_image'] 
-                                        : 'assets/default-avatar.jpg';
+                                    $profile_image = 'assets/default-avatar.jpg';
+                                    if (!empty($post['profile_image'])) {
+                                        $profile_path = UPLOAD_PATH . 'profiles/' . $post['profile_image'];
+                                        if (file_exists($profile_path)) {
+                                            $profile_image = $profile_path;
+                                        }
+                                    }
                                     ?>
                                     <img src="<?php echo $profile_image; ?>" alt="Author" class="author-avatar">
                                     <span>By <strong><?php echo htmlspecialchars($post['username'] ?? 'Unknown'); ?></strong></span>
@@ -279,7 +281,7 @@ try {
                                 <?php endif; ?>
                             </div>
                             
-                            <div class="post-actions">
+                            <div class="post-actions" onclick="event.stopPropagation();">
                                 <button class="like-btn" onclick="toggleLike(<?php echo $post['id']; ?>, this)" 
                                         data-post-id="<?php echo $post['id']; ?>">
                                     <span class="like-icon">❤️</span>
@@ -332,7 +334,7 @@ try {
                     <?php else: ?>
                         <?php foreach ($popular_posts as $popular): ?>
                             <div class="mb-2">
-                                <a href="post.php?id=<?php echo (int)$popular['id']; ?>" style="text-decoration: none; color: var(--text-primary);">
+                                <a href="post.php?slug=<?php echo urlencode($popular['slug']); ?>" style="text-decoration: none; color: var(--text-primary);">
                                     <strong><?php echo htmlspecialchars(substr($popular['title'], 0, 50)); ?>...</strong>
                                 </a>
                                 <div style="font-size: 0.875rem; color: var(--text-light);">
@@ -351,7 +353,7 @@ try {
                     <?php else: ?>
                         <?php foreach ($recent_posts as $recent): ?>
                             <div class="mb-2">
-                                <a href="post.php?id=<?php echo (int)$recent['id']; ?>" style="text-decoration: none; color: var(--text-primary);">
+                                <a href="post.php?slug=<?php echo urlencode($recent['slug']); ?>" style="text-decoration: none; color: var(--text-primary);">
                                     <strong><?php echo htmlspecialchars(substr($recent['title'], 0, 50)); ?>...</strong>
                                 </a>
                                 <div style="font-size: 0.875rem; color: var(--text-light);">
@@ -410,7 +412,6 @@ try {
             try {
                 const formData = new FormData();
                 formData.append('post_id', postId);
-                formData.append('csrf_token', '<?php echo csrf_token(); ?>');
                 
                 const response = await fetch('api/like_post.php', {
                     method: 'POST',
@@ -431,7 +432,7 @@ try {
                         likeIcon.textContent = '🤍';
                     }
                     
-                    likeCount.textContent = result.likes_count;
+                    likeCount.textContent = result.likes_count || 0;
                 } else {
                     alert(result.message || 'Error occurred');
                 }
@@ -450,7 +451,7 @@ try {
             modal.classList.add('active');
             
             // Load comments via AJAX
-            fetch(`post.php?id=${postId}&ajax=comments`)
+            fetch(`api/get_comments.php?post_id=${postId}`)
                 .then(response => response.text())
                 .then(html => {
                     modalBody.innerHTML = html;

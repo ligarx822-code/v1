@@ -63,7 +63,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Enhanced Header with Animated Menu */
+/* Enhanced Header with Beautiful Menu Animation */
 .header {
   background: var(--gradient-primary);
   color: var(--text-white);
@@ -117,22 +117,22 @@ body {
   overflow: hidden;
 }
 
-/* Animated underline effect */
-.nav-links a::before {
+/* Beautiful Animated Underline Effect */
+.nav-links a::after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: 8px;
   left: 50%;
   width: 0;
-  height: 3px;
+  height: 2px;
   background: var(--text-white);
   border-radius: 2px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateX(-50%);
 }
 
-.nav-links a:hover::before {
-  width: 80%;
+.nav-links a:hover::after {
+  width: calc(100% - 3rem);
 }
 
 .nav-links a:hover {
@@ -173,7 +173,8 @@ body {
     top: 70px;
     left: 0;
     right: 0;
-    background: var(--gradient-primary);
+    background: rgba(99, 102, 241, 0.98);
+    backdrop-filter: blur(20px);
     flex-direction: column;
     padding: 2rem 1rem;
     gap: 1rem;
@@ -183,7 +184,6 @@ body {
     transition: var(--transition);
     box-shadow: var(--shadow-lg);
     z-index: 999;
-    backdrop-filter: blur(20px);
   }
   
   .nav-links.active {
@@ -203,7 +203,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
   
-  .nav-links a::before {
+  .nav-links a::after {
     display: none;
   }
 }
@@ -278,7 +278,7 @@ body {
 
 @media (min-width: 1200px) {
   .posts-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -292,6 +292,7 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 
 .post-card::before {
@@ -317,7 +318,7 @@ body {
 
 .post-image {
   width: 100%;
-  height: 200px;
+  height: 250px;
   object-fit: cover;
   transition: var(--transition);
 }
@@ -421,16 +422,21 @@ body {
   border-radius: 25px;
   transition: var(--transition);
   font-weight: 500;
+  font-size: 1rem;
 }
 
 .like-btn:hover {
   background: var(--bg-primary);
-  color: var(--primary);
+  color: var(--error);
   transform: scale(1.05);
 }
 
 .like-btn.liked {
   color: var(--error);
+}
+
+.like-icon {
+  font-size: 1.2rem;
 }
 
 .comment-btn {
@@ -445,6 +451,7 @@ body {
   border-radius: 25px;
   transition: var(--transition);
   font-weight: 500;
+  font-size: 1rem;
 }
 
 .comment-btn:hover {
@@ -480,7 +487,7 @@ body {
   background: var(--bg-card);
   border-radius: 20px;
   padding: 2rem;
-  max-width: 500px;
+  max-width: 600px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
@@ -1194,6 +1201,79 @@ body {
   border-radius: 12px;
 }
 
+/* Post Content Styles */
+.post-content-display {
+  line-height: 1.8;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.post-content-display h1,
+.post-content-display h2,
+.post-content-display h3,
+.post-content-display h4,
+.post-content-display h5,
+.post-content-display h6 {
+  margin: 2rem 0 1rem 0;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.post-content-display h1 { font-size: 2.5rem; }
+.post-content-display h2 { font-size: 2rem; }
+.post-content-display h3 { font-size: 1.75rem; }
+.post-content-display h4 { font-size: 1.5rem; }
+.post-content-display h5 { font-size: 1.25rem; }
+.post-content-display h6 { font-size: 1.1rem; }
+
+.post-content-display p {
+  margin-bottom: 1.5rem;
+}
+
+.post-content-display img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 2rem 0;
+  box-shadow: var(--shadow-md);
+}
+
+.post-content-display pre {
+  background: linear-gradient(145deg, #1e293b, #334155);
+  color: #e2e8f0;
+  padding: 1.5rem;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin: 2rem 0;
+  box-shadow: var(--shadow-md);
+}
+
+.post-content-display code {
+  background: var(--bg-secondary);
+  color: var(--primary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+}
+
+.post-content-display blockquote {
+  border-left: 4px solid var(--primary);
+  padding: 1rem 1.5rem;
+  margin: 2rem 0;
+  background: var(--bg-secondary);
+  border-radius: 0 12px 12px 0;
+  font-style: italic;
+}
+
+.post-content-display ul,
+.post-content-display ol {
+  margin: 1rem 0 1rem 2rem;
+}
+
+.post-content-display li {
+  margin-bottom: 0.5rem;
+}
+
 /* Animations */
 @keyframes slideInDown {
   from {
@@ -1352,6 +1432,10 @@ body {
   .send-btn {
     align-self: stretch;
   }
+  
+  .post-image {
+    height: 200px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1366,6 +1450,10 @@ body {
   
   .stat-number {
     font-size: 2rem;
+  }
+  
+  .post-image {
+    height: 180px;
   }
 }
 
